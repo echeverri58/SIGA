@@ -38,9 +38,13 @@ internet**. La planilla se genera en el dispositivo y se descarga directamente.
 | `server.js`    | Mini-servidor local + conversión Excel→PDF (solo Node). |
 | `convertir_server.ps1` | Convertidor Excel→PDF persistente (rápido).     |
 | `convertir.ps1` | Conversión puntual de Excel a PDF (uso manual).        |
+| `backend/`     | Backend para la nube (LibreOffice) — PDF desde GitHub. |
 | `sena_logo.png` | Logo del SENA.                                        |
 | `SUBIR_GITHUB.bat` | Sube los archivos al repositorio de GitHub.        |
-| `Siga.xlsx`    | Plantilla oficial (solo lectura).                      |
+| `COMPARTIR.bat` | Comparte la app por internet con PDF idéntico.       |
+| `Siga.xlsx`    | Plantilla oficial completa (solo lectura).             |
+| `Siga_planilla.xlsx` | Plantilla con solo la hoja de la planilla (para el PDF). |
+| `crear_plantilla_pdf.py` | Genera `Siga_planilla.xlsx` desde `Siga.xlsx`. |
 
 > **PDF idéntico al Excel**: requiere ejecutar `node server.js` en una máquina
 > con **Microsoft Excel instalado**. Al iniciar, el servidor abre Excel en segundo
@@ -103,6 +107,45 @@ Ejecuta **`COMPARTIR.bat`**. Ese archivo:
 
 Comparte ese enlace: quien lo abra usará exactamente la misma app, **con el PDF
 idéntico al Excel**. Debes dejar la ventana abierta mientras la usan.
+
+## PDF idéntico desde GitHub (backend en la nube)
+
+GitHub Pages **no puede convertir** un Excel a PDF, porque solo sirve páginas web
+y no ejecuta programas. Para que **el enlace de GitHub** entregue el PDF
+convertido del Excel, hay que desplegar el conversor en un servicio gratuito.
+La carpeta `backend/` ya está lista para eso (Node + LibreOffice).
+
+### Pasos con Render (gratis)
+
+1. Crea una cuenta en https://render.com (puedes entrar con GitHub).
+2. **New → Web Service** y conecta el repositorio `SIGA`.
+3. En la configuración:
+   - **Root Directory:** `backend`
+   - **Runtime:** `Docker` (Render detecta el `Dockerfile`)
+   - **Instance Type:** `Free`
+4. Pulsa **Create Web Service** y espera a que quede **Live**.
+5. Copia la URL que te asigna (por ejemplo `https://siga-backend.onrender.com`).
+6. Ábrela en el navegador: debe responder `{"ok":true,"conversor":"libreoffice"}`.
+7. Pega esa URL en `app.js`, en la constante `CONVERSOR_URL`:
+
+   ```js
+   var CONVERSOR_URL = "https://siga-backend.onrender.com";
+   ```
+
+8. Sube el cambio a GitHub. Desde ese momento, **el PDF que se descargue desde el
+   enlace de GitHub ya será el Excel convertido**.
+
+### A tener en cuenta
+
+- El plan gratis de Render "duerme" el servicio tras unos minutos sin uso: la
+  primera conversión después de dormido puede tardar 30-60 s; las siguientes son
+  rápidas.
+- El archivo se envía a ese servicio **solo para convertirlo** y se borra al
+  terminar (no se almacena).
+- Para el PDF se usa `Siga_planilla.xlsx` (plantilla con una sola hoja) para que
+  el PDF contenga únicamente la planilla de asistencia.
+- Si prefieres no depender de la nube: usa `COMPARTIR.bat` o la app local con
+  `node server.js`.
 
 Opciones alternativas:
 

@@ -6,7 +6,16 @@
   "use strict";
 
   /* ---------- Constantes de la plantilla ---------- */
-  var TEMPLATE_URL = "Siga.xlsx";
+  var TEMPLATE_URL = "Siga.xlsx";            // plantilla completa (Excel que descarga el usuario)
+  var TEMPLATE_PDF = "Siga_planilla.xlsx";   // plantilla con SOLO la hoja de la planilla (para el PDF)
+
+  /* URL del backend que convierte el Excel a PDF.
+     - "" (vacío) = usa el mismo servidor donde está la app (node server.js).
+     - Si despliegas el backend en la nube, pega aquí su URL, por ejemplo:
+         var CONVERSOR_URL = "https://siga-backend.onrender.com";
+     Con eso, el PDF que se descargue DESDE GITHUB también será el Excel convertido. */
+  var CONVERSOR_URL = "";
+
   var SHEET2 = "xl/worksheets/sheet2.xml";            // hoja "asistencia_mod"
   var DRAWING2 = "xl/drawings/drawing2.xml";          // logo + casillas
   var DRAWING2_RELS = "xl/drawings/_rels/drawing2.xml.rels";
@@ -524,9 +533,9 @@
     }, 1000);
   }
 
-  async function generarExcel(sinComprimir) {
-    var resp = await fetch(TEMPLATE_URL, { cache: "no-store" });
-    if (!resp.ok) throw new Error("No se pudo cargar la plantilla Siga.xlsx (HTTP " + resp.status + ")");
+  async function generarExcel(sinComprimir, plantilla) {
+    var resp = await fetch(plantilla || TEMPLATE_URL, { cache: "no-store" });
+    if (!resp.ok) throw new Error("No se pudo cargar la plantilla " + (plantilla || TEMPLATE_URL) + " (HTTP " + resp.status + ")");
     var buf = await resp.arrayBuffer();
     var zip = await JSZip.loadAsync(buf);
 
@@ -729,8 +738,9 @@
   async function generarPDF() {
     if (servidorPdf !== false) {
       try {
-        var xlsxBlob = await generarExcel(true);   // sin comprimir: mas rapido de armar
-        var resp = await fetch("/api/pdf", { method: "POST", body: xlsxBlob });
+        // Se usa la plantilla de UNA sola hoja para que el PDF salga solo con la planilla
+        var xlsxBlob = await generarExcel(true, TEMPLATE_PDF);
+        var resp = await fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "POST", body: xlsxBlob });
         if (resp.ok) {
           servidorPdf = true;
           return await resp.blob();
@@ -801,8 +811,8 @@
   actualizarPreviewFirma();
   actualizarContadores();
 
-  // Detecta si hay un conversor (Excel) disponible: solo entonces el PDF es idéntico al Excel
-  fetch("/api/pdf", { method: "GET", cache: "no-store" })
+  // Detecta si hay un conversor (Excel/LibreOffice) disponible: solo entonces el PDF es idéntico al Excel
+  fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "GET", cache: "no-store" })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) { servidorPdf = !!(d && d.ok); })
     .catch(function () { servidorPdf = false; });
