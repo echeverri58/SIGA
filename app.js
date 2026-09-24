@@ -524,7 +524,7 @@
     }, 1000);
   }
 
-  async function generarExcel() {
+  async function generarExcel(sinComprimir) {
     var resp = await fetch(TEMPLATE_URL, { cache: "no-store" });
     if (!resp.ok) throw new Error("No se pudo cargar la plantilla Siga.xlsx (HTTP " + resp.status + ")");
     var buf = await resp.arrayBuffer();
@@ -570,10 +570,10 @@
       }
     }
 
-    // 4) Comprimir y descargar
+    // 4) Empaquetar (sin comprimir cuando solo se usara para convertir a PDF: es mas rapido)
     var blob = await zip.generateAsync({
       type: "blob",
-      compression: "DEFLATE",
+      compression: sinComprimir ? "STORE" : "DEFLATE",
       mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     });
     return blob;
@@ -729,7 +729,7 @@
   async function generarPDF() {
     if (servidorPdf !== false) {
       try {
-        var xlsxBlob = await generarExcel();
+        var xlsxBlob = await generarExcel(true);   // sin comprimir: mas rapido de armar
         var resp = await fetch("/api/pdf", { method: "POST", body: xlsxBlob });
         if (resp.ok) {
           servidorPdf = true;

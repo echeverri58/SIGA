@@ -1,0 +1,13 @@
+# Archivos generados por la app (no deben subirse)
+SIGA_FORMATO_PLANILLA_ASISTENCIA_*.xlsx
+SIGA_FORMATO_PLANILLA_ASISTENCIA_*.pdf
+
+# Archivos temporales de la conversión y de Excel
+_tmp_*
+mso*.tmp
+~$*
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store

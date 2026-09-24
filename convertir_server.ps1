@@ -10,6 +10,9 @@ $excel.Visible = $false
 $excel.DisplayAlerts = $false
 $excel.ScreenUpdating = $false
 $excel.EnableEvents = $false
+$excel.AskToUpdateLinks = $false
+$excel.Calculation = -4135          # xlCalculationManual (no recalcular: mas rapido)
+$excel.Interactive = $false
 
 [Console]::Out.WriteLine("READY")
 [Console]::Out.Flush()
@@ -34,7 +37,7 @@ while ($true) {
   try {
     $wb = $excel.Workbooks.Open($xlsx, 0)  # 0 = no actualizar vinculos
     $ws = $wb.Worksheets.Item("asistencia_mod")
-    $ws.ExportAsFixedFormat(0, $pdf)       # 0 = xlTypePDF
+    $ws.ExportAsFixedFormat(0, $pdf)       # 0 = xlTypePDF (calidad estandar)
     $wb.Close($false)
     [Console]::Out.WriteLine("OK")
   }

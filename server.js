@@ -153,6 +153,7 @@ function handlePdfConversion(req, res) {
     const pdfPath = path.join(ROOT, `_tmp_${ts}.pdf`);
     fs.writeFileSync(xlsxPath, body);
 
+    const t0 = Date.now();
     convertir(xlsxPath, pdfPath)
       .then(() => {
         if (!fs.existsSync(pdfPath)) throw new Error("No se generó el PDF");
@@ -162,6 +163,7 @@ function handlePdfConversion(req, res) {
           "Content-Length": pdf.length
         });
         res.end(pdf);
+        console.log("  [PDF] convertido en " + ((Date.now() - t0) / 1000).toFixed(1) + " s");
       })
       .catch((err) => {
         res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
@@ -169,6 +171,7 @@ function handlePdfConversion(req, res) {
           ok: false,
           error: "No se pudo convertir a PDF: " + err.message
         }));
+        console.log("  [PDF] error: " + err.message);
       })
       .finally(() => {
         try { fs.unlinkSync(xlsxPath); } catch (e) {}
