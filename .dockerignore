@@ -1,0 +1,9 @@
+.git
+.gitignore
+node_modules
+_tmp_*
+mso*.tmp
+~$*
+*.log
+SIGA_FORMATO_PLANILLA_ASISTENCIA_*
+cloudflared.exe

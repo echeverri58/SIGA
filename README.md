@@ -108,7 +108,45 @@ Ejecuta **`COMPARTIR.bat`**. Ese archivo:
 Comparte ese enlace: quien lo abra usará exactamente la misma app, **con el PDF
 idéntico al Excel**. Debes dejar la ventana abierta mientras la usan.
 
-## PDF idéntico desde GitHub (backend en la nube)
+## Instalarla como app en el celular (PWA / APK)
+
+La app ya es una **PWA** (tiene `manifest.json`, íconos y service worker), así que:
+
+### Instalarla sin compilar nada (recomendado)
+1. Abre el enlace de la app en **Chrome del celular**.
+2. Toca el menú **⋮ → "Instalar aplicación"** (o "Agregar a pantalla de inicio").
+3. Queda con **ícono propio** y abre **a pantalla completa**, como una app.
+   También funciona sin conexión (el service worker guarda los archivos).
+
+### Generar un APK de verdad
+1. Entra a **https://www.pwabuilder.com**
+2. Pega la URL de la app (por ejemplo `https://echeverri58.github.io/SIGA/`).
+3. Pulsa **Start** → elige **Android** → **Generate Package**.
+4. Descarga el **APK** (y, si quieres, el paquete `.aab` para Play Store).
+
+> El APK debe estar firmado con tu clave; PWABuilder te la genera y te explica cómo firmarlo.
+> Nota: el APK abre la misma app web, así que el PDF exacto sigue dependiendo del
+> conversor (local o en la nube). El Excel se genera igual.
+
+## PDF idéntico alojando TODO en un solo servicio (sin GitHub Pages)
+
+En vez de GitHub Pages + backend, puedes subir **todo junto** (la página y el
+conversor) a un servicio que ejecute contenedores. Te da **una sola URL** y ahí
+el PDF sale convertido del Excel.
+
+Con **Render** (https://render.com):
+
+1. **New → Web Service** y conecta el repositorio `SIGA`.
+2. Deja el **Root Directory** vacío y elige **Runtime: Docker**
+   (usa el `Dockerfile` de la raíz, que incluye LibreOffice).
+3. **Instance Type: Free** → **Create Web Service**.
+4. Abre la URL que te asigne: es la app completa, con la conversión incluida.
+
+> Otros servicios equivalentes: Railway, Koyeb, Fly.io, Google Cloud Run,
+> Hugging Face Spaces. Todos ejecutan el `Dockerfile`. Render pide tarjeta en
+> algunos países; **Hugging Face Spaces** y **ClawCloud Run** no.
+
+## PDF idéntico desde GitHub (backend aparte)
 
 GitHub Pages **no puede convertir** un Excel a PDF, porque solo sirve páginas web
 y no ejecuta programas. Para que **el enlace de GitHub** entregue el PDF

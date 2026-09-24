@@ -885,4 +885,11 @@
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) { servidorPdf = !!(d && d.ok); })
     .catch(function () { servidorPdf = false; });
+
+  // Service worker: permite instalar la app en el celular y usarla sin conexión
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () { /* sin soporte */ });
+    });
+  }
 })();

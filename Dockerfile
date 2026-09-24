@@ -1,7 +1,7 @@
-# Backend de conversión Excel -> PDF (LibreOffice) para SIGA
+# SIGA · Aplicación + conversión Excel -> PDF (todo en uno) para la nube.
+# Construye una imagen con LibreOffice, que es quien convierte el Excel a PDF.
 FROM node:20-slim
 
-# LibreOffice Calc + fuentes (LibreOffice necesita fuentes reales para el PDF)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libreoffice-calc \
         fonts-liberation \
@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY server.js .
+COPY . .
 
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "backend/server.js"]
