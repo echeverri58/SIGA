@@ -37,6 +37,23 @@ while ($true) {
   try {
     $wb = $excel.Workbooks.Open($xlsx, 0)  # 0 = no actualizar vinculos
     $ws = $wb.Worksheets.Item("asistencia_mod")
+
+    # --- Ajuste de impresion: la planilla completa en una hoja horizontal ---
+    $ps = $ws.PageSetup
+    $ps.PrintArea          = '$A$1:$M$33'
+    $ps.Orientation        = 2      # xlLandscape
+    $ps.Zoom               = $false
+    $ps.FitToPagesWide     = 1
+    $ps.FitToPagesTall     = 1
+    $ps.CenterHorizontally = $true
+    $ps.CenterVertically   = $false
+    $ps.LeftMargin         = 12
+    $ps.RightMargin        = 12
+    $ps.TopMargin          = 12
+    $ps.BottomMargin       = 12
+    $ps.HeaderMargin       = 0
+    $ps.FooterMargin       = 0
+
     $ws.ExportAsFixedFormat(0, $pdf)       # 0 = xlTypePDF (calidad estandar)
     $wb.Close($false)
     [Console]::Out.WriteLine("OK")

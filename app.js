@@ -881,10 +881,24 @@
   actualizarContadores();
 
   // Detecta si hay un conversor (Excel/LibreOffice) disponible: solo entonces el PDF es idéntico al Excel
+  function mostrarEstadoPdf() {
+    var el = $("pdfEstado");
+    if (!el) return;
+    el.hidden = false;
+    if (servidorPdf === true) {
+      el.className = "pdf-estado ok";
+      el.textContent = "✅ PDF EXACTO ACTIVO — la descarga en PDF será el Excel convertido: idéntico al Excel.";
+    } else {
+      el.className = "pdf-estado no";
+      el.textContent = "⚠️ PDF APROXIMADO — no se detectó el conversor de Excel. Abre la app con 'node server.js' " +
+                       "en un PC con Excel y reinícialo; así el PDF será idéntico al Excel.";
+    }
+  }
+
   fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "GET", cache: "no-store" })
     .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { servidorPdf = !!(d && d.ok); })
-    .catch(function () { servidorPdf = false; });
+    .then(function (d) { servidorPdf = !!(d && d.ok); mostrarEstadoPdf(); })
+    .catch(function () { servidorPdf = false; mostrarEstadoPdf(); });
 
   // Service worker: permite instalar la app en el celular y usarla sin conexión
   if ("serviceWorker" in navigator) {
