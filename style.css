@@ -37,16 +37,26 @@ body {
   overflow: hidden;
 }
 .hero-inner { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+.hero-top { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.hero-logo {
+  width: 66px; height: 66px;
+  background: #fff;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  padding: 7px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.18);
+  flex: 0 0 auto;
+}
+.hero-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .hero-badge {
   display: inline-block;
   background: rgba(255,255,255,.16);
   border: 1px solid rgba(255,255,255,.25);
-  padding: 5px 12px;
+  padding: 6px 13px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: .4px;
-  margin-bottom: 16px;
 }
 .hero h1 {
   margin: 0 0 10px;
@@ -168,18 +178,70 @@ body {
   margin-bottom: 10px;
 }
 .firma-head label { font-size: 13px; font-weight: 600; color: var(--gris); }
-.pad-wrap {
-  position: relative;
-  border-radius: 14px;
-  overflow: hidden;
+
+/* Caja / botón "Cargar firma" dentro del formulario */
+.firma-box {
+  width: 100%;
+  min-height: 118px;
   border: 2px dashed #c3d2c9;
+  border-radius: 14px;
   background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--gris);
+  transition: border-color .15s, background .15s;
+}
+.firma-box:hover, .firma-box:active { border-color: var(--verde-acento); background: #f7fdf9; }
+.firma-empty { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.firma-empty-ico { font-size: 30px; line-height: 1; }
+.firma-empty-txt { font-weight: 700; color: var(--verde-oscuro); font-size: 16px; }
+.firma-empty-sub { font-size: 13px; color: var(--gris-claro); }
+.firma-preview { max-width: 100%; max-height: 120px; object-fit: contain; display: block; }
+
+/* Panel de firma a pantalla completa */
+.firma-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overscroll-behavior: none;
+}
+.firma-modal[hidden] { display: none; }
+.firma-modal-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  background: linear-gradient(120deg, var(--verde-oscuro), var(--verde));
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+.firma-bar-actions { display: flex; align-items: center; gap: 8px; }
+.firma-close, .firma-ico-btn {
+  background: rgba(255,255,255,.22);
+  border: none; color: #fff;
+  width: 36px; height: 36px; border-radius: 50%;
+  font-size: 17px; cursor: pointer;
+  display: grid; place-items: center;
+  line-height: 1;
+}
+.firma-ico-btn { background: rgba(255,255,255,.16); font-size: 19px; }
+.firma-modal-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  touch-action: none;
 }
 #canvasFirma {
   display: block;
   width: 100%;
-  aspect-ratio: 2.4 / 1;
-  height: auto;
+  height: 100%;
   touch-action: none;
   cursor: crosshair;
 }
@@ -188,11 +250,42 @@ body {
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
   color: var(--gris-claro);
-  font-size: 15px;
+  font-size: 16px;
   pointer-events: none;
   transition: opacity .2s;
 }
 .pad-hint.hidden { opacity: 0; }
+.rotate-hint {
+  position: absolute;
+  left: 50%; bottom: 14px;
+  transform: translateX(-50%);
+  background: rgba(15,122,61,.94);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 17px;
+  border-radius: 999px;
+  pointer-events: none;
+  max-width: 92%;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.22);
+  animation: late .6s ease-in-out infinite alternate;
+}
+.rotate-hint[hidden] { display: none; }
+@keyframes late {
+  from { transform: translateX(-50%) rotate(-1.5deg); }
+  to   { transform: translateX(-50%) rotate(1.5deg); }
+}
+.firma-modal-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--borde);
+  background: #fff;
+}
+.firma-modal-actions .btn { flex: 1 1 30%; min-width: 104px; }
+
+/* Bloqueo de scroll mientras se firma */
+body.modal-open { overflow: hidden; }
 
 /* ===================== BOTONES ===================== */
 .btn {
@@ -327,6 +420,32 @@ body {
   padding: 4px 10px 10px;
 }
 
+/* ===================== CRÉDITOS ===================== */
+.credit {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 18px 22px;
+  margin-top: 4px;
+}
+.credit-logo {
+  width: 68px; height: 68px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+.credit-info { min-width: 0; }
+.credit-title { margin: 0 0 3px; font-size: 15px; color: var(--tinta); font-weight: 500; }
+.credit-title strong { color: var(--verde-oscuro); font-weight: 800; }
+.credit-role { margin: 0 0 7px; font-size: 13.5px; color: var(--gris); }
+.credit-mail { margin: 0; font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.credit-mail a { color: var(--teal); text-decoration: none; font-weight: 600; }
+.credit-mail a:hover { text-decoration: underline; }
+.credit-mail span { color: var(--gris-claro); }
+
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 520px) {
   .grid { grid-template-columns: 1fr; }
@@ -334,4 +453,30 @@ body {
   .hero { padding: 26px 18px 58px; }
   .item { flex-wrap: wrap; }
   .item .firma-mini { width: 100%; height: 54px; order: 3; }
+  .hero-logo { width: 54px; height: 54px; border-radius: 13px; }
+  .credit { flex-direction: column; text-align: center; gap: 12px; }
+  .credit-mail { justify-content: center; }
+}
+
+/* ===== Horizontal (celular girado): máximo espacio para firmar ===== */
+@media (orientation: landscape) {
+  .firma-modal-bar {
+    padding: 7px 14px;
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+    font-size: 15px;
+  }
+  .firma-close, .firma-ico-btn { width: 30px; height: 30px; font-size: 15px; }
+  .firma-ico-btn { font-size: 17px; }
+  .firma-modal-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px 14px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    padding-left: calc(14px + env(safe-area-inset-left));
+    padding-right: calc(14px + env(safe-area-inset-right));
+  }
+  .firma-modal-actions .btn { flex: 1 1 0; min-width: 0; padding: 11px 12px; font-size: 14px; }
+  .rotate-hint { display: none; }
+  .pad-hint { font-size: 15px; }
 }

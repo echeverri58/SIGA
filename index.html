@@ -16,13 +16,18 @@
   <!-- ===================== ENCABEZADO ===================== -->
   <header class="hero">
     <div class="hero-inner">
-      <div class="hero-badge">SENA · Registro de asistencia</div>
+      <div class="hero-top">
+        <div class="hero-logo">
+          <img src="sena_logo.png" alt="Logo SENA">
+        </div>
+        <div class="hero-badge">SENA · Registro de asistencia</div>
+      </div>
       <h1>Formato Planilla de Asistencia</h1>
-      <p class="hero-sub">Registra los participantes, captura su firma en pantalla y descarga el Excel listo, sin alterar el formato oficial.</p>
+      <p class="hero-sub">Registra los participantes, captura su firma en pantalla y descarga el archivo en Excel o PDF, sin alterar el formato oficial.</p>
       <div class="hero-steps">
         <span class="step"><i>1</i> Llena los datos</span>
         <span class="step"><i>2</i> Dibuja la firma</span>
-        <span class="step"><i>3</i> Descarga el Excel</span>
+        <span class="step"><i>3</i> Descarga Excel o PDF</span>
       </div>
     </div>
     <div class="hero-wave"></div>
@@ -86,12 +91,16 @@
         <div class="firma-block">
           <div class="firma-head">
             <label>Firma del participante</label>
-            <button type="button" class="btn btn-ghost btn-sm" id="btnBorrarFirma" aria-label="Borrar firma">↺ Borrar</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnQuitarFirma" hidden>Quitar</button>
           </div>
-          <div class="pad-wrap">
-            <canvas id="canvasFirma"></canvas>
-            <span class="pad-hint" id="padHint">✍️ Dibuja aquí con el dedo</span>
-          </div>
+          <button type="button" class="firma-box" id="btnCargarFirma">
+            <span class="firma-empty" id="firmaEmpty">
+              <span class="firma-empty-ico">✍️</span>
+              <span class="firma-empty-txt">Cargar firma</span>
+              <span class="firma-empty-sub">Toca aquí para firmar a pantalla completa</span>
+            </span>
+            <img class="firma-preview" id="firmaPreview" alt="Firma" hidden>
+          </button>
         </div>
 
         <div class="form-actions">
@@ -120,6 +129,20 @@
     <footer class="footnote">
       Los datos se procesan únicamente en tu dispositivo y el archivo (Excel o PDF) se genera aquí mismo, sin subir nada a internet.
     </footer>
+
+    <!-- ===================== CRÉDITOS ===================== -->
+    <section class="credit">
+      <img class="credit-logo" src="sena_logo.png" alt="Logo SENA">
+      <div class="credit-info">
+        <p class="credit-title">Aplicación creada por <strong>John Alexander Echeverry Ocampo</strong></p>
+        <p class="credit-role">Instructor del SENA · Politólogo · Analista de Datos</p>
+        <p class="credit-mail">
+          <a href="mailto:echeverri58@gmail.com">echeverri58@gmail.com</a>
+          <span>·</span>
+          <a href="mailto:jaecheverry@sena.edu.co">jaecheverry@sena.edu.co</a>
+        </p>
+      </div>
+    </section>
   </main>
 
   <!-- ===================== BARRA INFERIOR ===================== -->
@@ -139,6 +162,28 @@
 
   <!-- ===================== TOAST ===================== -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ============ FIRMA A PANTALLA COMPLETA ============ -->
+  <div class="firma-modal" id="firmaModal" hidden>
+    <div class="firma-modal-bar">
+      <span>Firma del participante</span>
+      <div class="firma-bar-actions">
+        <button type="button" class="firma-ico-btn" id="btnAmpliarFirma" title="Pantalla completa / girar" aria-label="Pantalla completa">⤢</button>
+        <button type="button" class="firma-close" id="btnCerrarFirma" aria-label="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="firma-modal-stage">
+      <canvas id="canvasFirma"></canvas>
+      <span class="pad-hint" id="padHint">✍️ Firma aquí con el dedo</span>
+      <span class="rotate-hint" id="rotateHint" hidden>🔄 Gira el celular a horizontal para más espacio</span>
+    </div>
+    <div class="firma-modal-actions">
+      <button type="button" class="btn btn-ghost" id="btnBorrarFirma">Borrar</button>
+      <button type="button" class="btn btn-ghost" id="btnSubirFirma">Cargar imagen</button>
+      <button type="button" class="btn btn-primary" id="btnGuardarFirma">Guardar firma</button>
+    </div>
+    <input type="file" id="inputFirmaArchivo" accept="image/*" hidden>
+  </div>
 
   <script src="jszip.min.js"></script>
   <script src="jspdf.umd.min.js"></script>

@@ -36,11 +36,24 @@ internet**. La planilla se genera en el dispositivo y se descarga directamente.
 | `jspdf.umd.min.js`              | Librería jsPDF (genera el PDF).          |
 | `jspdf.plugin.autotable.min.js` | Tablas para jsPDF (planilla en PDF).     |
 | `server.js`    | Mini-servidor local + conversión Excel→PDF (solo Node). |
-| `convertir.ps1` | Convierte el Excel a PDF usando Microsoft Excel.       |
+| `convertir_server.ps1` | Convertidor Excel→PDF persistente (rápido).     |
+| `convertir.ps1` | Conversión puntual de Excel a PDF (uso manual).        |
+| `sena_logo.png` | Logo del SENA.                                        |
+| `SUBIR_GITHUB.bat` | Sube los archivos al repositorio de GitHub.        |
 | `Siga.xlsx`    | Plantilla oficial (solo lectura).                      |
 
 > **PDF idéntico al Excel**: requiere ejecutar `node server.js` en una máquina
-> con **Microsoft Excel instalado**. La conversión usa Excel (`convertir.ps1`).
+> con **Microsoft Excel instalado**. Al iniciar, el servidor abre Excel en segundo
+> plano (`convertir_server.ps1`) y lo reutiliza, por lo que las conversiones son
+> mucho más rápidas (la primera puede tardar unos segundos).
+
+## Créditos
+
+Aplicación creada por **John Alexander Echeverry Ocampo**
+_Instructor del SENA · Politólogo · Analista de Datos_
+
+- echeverri58@gmail.com
+- jaecheverry@sena.edu.co
 
 ## Cómo alojarla en GitHub Pages
 

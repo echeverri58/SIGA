@@ -42,33 +42,36 @@
       .replace(/"/g, "&quot;");
   }
 
-  /* ---------- Firma (canvas táctil + mouse) ---------- */
+  /* ---------- Firma a pantalla completa ---------- */
   var canvas = $("canvasFirma");
   var ctx = canvas.getContext("2d");
   var dibujando = false;
   var firmaHecha = false;
+  var firmaActual = "";
+  var scrollPrevio = 0;
+
+  function medidaCanvas() {
+    var r = canvas.getBoundingClientRect();
+    return { w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)) };
+  }
 
   function ajustarCanvas() {
+    var m = medidaCanvas();
+    if (m.w < 4 || m.h < 4) return;              // el modal está oculto
     var dpr = window.devicePixelRatio || 1;
-    var rect = canvas.getBoundingClientRect();
-    var w = Math.max(1, Math.round(rect.width * dpr));
-    var h = Math.max(1, Math.round(rect.height * dpr));
+    var w = Math.round(m.w * dpr), h = Math.round(m.h * dpr);
     if (canvas.width !== w || canvas.height !== h) {
-      var prev = null;
-      if (canvas.width) { prev = canvas.toDataURL(); }
       canvas.width = w;
       canvas.height = h;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.lineWidth = 2.6;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "#16302a";
-      if (prev) {
-        var img = new Image();
-        img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height); };
-        img.src = prev;
-      }
     }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#16302a";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, m.w, m.h);
+    firmaHecha = false;
   }
 
   function punto(e) {
@@ -83,7 +86,9 @@
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(p.x + 0.01, p.y + 0.01);
     ctx.stroke();
+    firmaHecha = true;
     $("padHint").classList.add("hidden");
+    if (typeof actualizarAvisoGiro === "function") actualizarAvisoGiro();
   }
   function mover(e) {
     if (!dibujando) return;
@@ -92,9 +97,7 @@
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
   }
-  function terminar() {
-    if (dibujando) { dibujando = false; firmaHecha = true; }
-  }
+  function terminar() { dibujando = false; }
 
   canvas.addEventListener("pointerdown", iniciar);
   canvas.addEventListener("pointermove", mover);
@@ -103,27 +106,213 @@
   canvas.addEventListener("pointercancel", terminar);
 
   function borrarFirma() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var m = medidaCanvas();
     ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, m.w, m.h);
     firmaHecha = false;
     $("padHint").classList.remove("hidden");
+    if (typeof actualizarAvisoGiro === "function") actualizarAvisoGiro();
   }
 
-  function firmaDataURL() {
+  /* Dibuja una imagen (data URL) dentro del lienzo sin deformarla */
+  function dibujarEnCanvas(dataUrl, cb) {
+    var img = new Image();
+    img.onload = function () {
+      var m = medidaCanvas();
+      var escala = Math.min(m.w / img.width, m.h / img.height);
+      var w = img.width * escala, h = img.height * escala;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, m.w, m.h);
+      ctx.drawImage(img, (m.w - w) / 2, (m.h - h) / 2, w, h);
+      firmaHecha = true;
+      if (cb) cb();
+    };
+    img.onerror = function () { toast("No se pudo leer la imagen.", "error"); };
+    img.src = dataUrl;
+  }
+
+  /* Recorta el espacio en blanco sobrante de la firma */
+  function firmaRecortada() {
     if (!firmaHecha) return "";
     var w = canvas.width, h = canvas.height;
+    var datos;
+    try {
+      datos = ctx.getImageData(0, 0, w, h).data;
+    } catch (e) {
+      return canvas.toDataURL("image/png");
+    }
+    var minX = w, minY = h, maxX = -1, maxY = -1;
+    for (var y = 0; y < h; y++) {
+      var base = y * w * 4;
+      for (var x = 0; x < w; x++) {
+        var i = base + x * 4;
+        if (datos[i] < 235 || datos[i + 1] < 235 || datos[i + 2] < 235) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return "";
+    var pad = Math.round(Math.min(w, h) * 0.04) + 4;
+    minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+    maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+    var cw = maxX - minX + 1, ch = maxY - minY + 1;
     var tmp = document.createElement("canvas");
-    tmp.width = w; tmp.height = h;
+    tmp.width = cw; tmp.height = ch;
     var t = tmp.getContext("2d");
-    t.fillStyle = "#ffffff";
-    t.fillRect(0, 0, w, h);
-    t.drawImage(canvas, 0, 0);
+    t.fillStyle = "#fff";
+    t.fillRect(0, 0, cw, ch);
+    t.drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
     return tmp.toDataURL("image/png");
   }
 
+  /* Evita que la página se desplace mientras se firma */
+  function bloquearScroll() {
+    scrollPrevio = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = "-" + scrollPrevio + "px";
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.classList.add("modal-open");
+  }
+  function liberarScroll() {
+    document.body.classList.remove("modal-open");
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    window.scrollTo(0, scrollPrevio);
+  }
+
+  function actualizarPreviewFirma() {
+    var img = $("firmaPreview");
+    var vacio = $("firmaEmpty");
+    if (firmaActual) {
+      img.src = firmaActual;
+      img.hidden = false;
+      vacio.hidden = true;
+      $("btnQuitarFirma").hidden = false;
+    } else {
+      img.hidden = true;
+      img.removeAttribute("src");
+      vacio.hidden = false;
+      $("btnQuitarFirma").hidden = true;
+    }
+  }
+
+  /* Muestra u oculta el aviso de girar el celular (solo en vertical) */
+  function actualizarAvisoGiro() {
+    var hint = $("rotateHint");
+    if (!hint) return;
+    var vertical = window.innerHeight >= window.innerWidth;
+    hint.hidden = !(vertical && !firmaHecha);
+  }
+
+  /* Redimensiona el lienzo conservando lo ya dibujado (al girar / ampliar) */
+  function reajustarCanvas() {
+    if ($("firmaModal").hidden) return;
+    var previa = firmaHecha ? canvas.toDataURL() : "";
+    ajustarCanvas();
+    if (previa) dibujarEnCanvas(previa, actualizarAvisoGiro);
+    else actualizarAvisoGiro();
+  }
+
+  /* Intenta poner la firma en pantalla completa y en horizontal */
+  function alternarPantallaCompleta() {
+    var el = $("firmaModal");
+    var salir = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    var entrar = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (salir) salir.call(document);
+      if (screen.orientation && screen.orientation.unlock) {
+        try { screen.orientation.unlock(); } catch (e) {}
+      }
+      return;
+    }
+    if (!entrar) {
+      toast("Gira el celular a horizontal para tener más espacio.");
+      return;
+    }
+    Promise.resolve(entrar.call(el)).then(function () {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch(function () {});
+      }
+      setTimeout(reajustarCanvas, 350);
+    }).catch(function () {
+      toast("Gira el celular a horizontal para tener más espacio.");
+    });
+  }
+
+  function abrirModalFirma() {
+    bloquearScroll();
+    $("firmaModal").hidden = false;
+    requestAnimationFrame(function () {
+      ajustarCanvas();
+      if (firmaActual) {
+        dibujarEnCanvas(firmaActual, function () {
+          $("padHint").classList.add("hidden");
+          actualizarAvisoGiro();
+        });
+      } else {
+        $("padHint").classList.remove("hidden");
+        actualizarAvisoGiro();
+      }
+    });
+  }
+
+  function cerrarModalFirma() {
+    $("firmaModal").hidden = true;
+    liberarScroll();
+  }
+
+  $("btnCargarFirma").addEventListener("click", abrirModalFirma);
+  $("btnCerrarFirma").addEventListener("click", cerrarModalFirma);
   $("btnBorrarFirma").addEventListener("click", borrarFirma);
-  window.addEventListener("resize", ajustarCanvas);
+
+  $("btnGuardarFirma").addEventListener("click", function () {
+    var data = firmaRecortada();
+    if (!data) { toast("Dibuja o carga la firma antes de guardarla.", "error"); return; }
+    firmaActual = data;
+    actualizarPreviewFirma();
+    cerrarModalFirma();
+    toast("Firma guardada.", "success");
+  });
+
+  $("btnQuitarFirma").addEventListener("click", function () {
+    firmaActual = "";
+    actualizarPreviewFirma();
+  });
+
+  $("btnSubirFirma").addEventListener("click", function () { $("inputFirmaArchivo").click(); });
+  $("inputFirmaArchivo").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function (ev) {
+      dibujarEnCanvas(ev.target.result, function () {
+        $("padHint").classList.add("hidden");
+        toast("Imagen cargada. Pulsa Guardar firma.", "success");
+      });
+    };
+    lector.readAsDataURL(f);
+  });
+
+  $("btnAmpliarFirma").addEventListener("click", alternarPantallaCompleta);
+
+  // Al girar el celular o cambiar de tamaño, el lienzo se adapta y conserva la firma
+  var temporizadorGiro = null;
+  function alCambiarTamano() {
+    clearTimeout(temporizadorGiro);
+    temporizadorGiro = setTimeout(reajustarCanvas, 120);
+  }
+  window.addEventListener("resize", alCambiarTamano);
+  window.addEventListener("orientationchange", alCambiarTamano);
 
   /* ---------- UI: lista y contadores ---------- */
   function iniciales(nombres, apellidos) {
@@ -212,7 +401,8 @@
     $("tipoDoc").value = "CC";
     ["numDoc", "nombres", "apellidos", "direccion", "correo", "telefono"]
       .forEach(function (id) { $(id).value = ""; });
-    borrarFirma();
+    firmaActual = "";
+    actualizarPreviewFirma();
   }
 
   $("formParticipante").addEventListener("submit", function (e) {
@@ -227,7 +417,7 @@
     var dir = $("direccion").value.trim().toUpperCase();
     var cor = $("correo").value.trim().toUpperCase();
     var tel = $("telefono").value.trim().toUpperCase();
-    var firma = firmaDataURL();
+    var firma = firmaActual;
 
     if (!num || !nom || !ape) {
       return toast("Completa al menos: número de documento, nombres y apellidos.", "error");
@@ -482,31 +672,48 @@
   });
 
   /* ---------- Botón Descargar ---------- */
+  var primerPdf = true;
+
   $("btnGenerar").addEventListener("click", function () {
     if (!participantes.length) return;
     var btn = $("btnGenerar");
     var txt = $("btnGenerarTxt");
+    var esPdf = (formato === "pdf");
     btn.disabled = true;
-    txt.textContent = "Generando…";
 
-    var promesa = (formato === "pdf") ? generarPDF() : generarExcel();
+    // Indicador de progreso con segundos transcurridos (el PDF usa Excel)
+    var seg = 0;
+    txt.textContent = esPdf ? "Generando PDF… 0s" : "Generando…";
+    var reloj = null;
+    if (esPdf) {
+      reloj = setInterval(function () {
+        seg++;
+        txt.textContent = "Generando PDF… " + seg + "s";
+      }, 1000);
+      if (primerPdf) {
+        primerPdf = false;
+        toast("Abriendo Excel para el PDF. La primera vez puede tardar unos segundos…");
+      }
+    }
+
+    var promesa = esPdf ? generarPDF() : generarExcel();
     promesa
       .then(function (blob) {
-        descargarBlob(blob, nombreArchivo(formato === "pdf" ? "pdf" : "xlsx"));
+        descargarBlob(blob, nombreArchivo(esPdf ? "pdf" : "xlsx"));
         toast("Descarga lista: " + participantes.length + " participante(s) en " +
-              (formato === "pdf" ? "PDF" : "Excel") + ".", "success");
+              (esPdf ? "PDF" : "Excel") + ".", "success");
       })
       .catch(function (err) {
         toast("Error al generar el archivo: " + err.message, "error");
       })
       .finally(function () {
+        if (reloj) clearInterval(reloj);
         btn.disabled = participantes.length === 0;
         txt.textContent = "Descargar";
       });
   });
 
   /* ---------- Inicialización ---------- */
-  ajustarCanvas();
-  borrarFirma();
+  actualizarPreviewFirma();
   actualizarContadores();
 })();
