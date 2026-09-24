@@ -7,7 +7,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { spawn } = require("child_process");
+const { spawn, execFile } = require("child_process");
 
 const PORT = parseInt(process.argv[2], 10) || 8080;
 const ROOT = __dirname;
@@ -124,9 +124,33 @@ function convertirUna(xlsxPath, pdfPath) {
   }));
 }
 
-// Serializa las conversiones (una a la vez) reutilizando el mismo Excel.
+// Modo simple: abre Excel, convierte y lo cierra. Es más lento pero es el que
+// funcionaba siempre (se usa como respaldo del convertidor persistente).
+function convertirSimple(xlsxPath, pdfPath) {
+  return new Promise((resolve, reject) => {
+    const script = path.join(ROOT, "convertir.ps1");
+    execFile(
+      "powershell.exe",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, xlsxPath, pdfPath],
+      { timeout: 120000, windowsHide: true },
+      (err, stdout, stderr) => {
+        if (err) return reject(new Error(err.message + (stderr ? " | " + String(stderr).trim().slice(0, 200) : "")));
+        if (!fs.existsSync(pdfPath)) return reject(new Error("Excel no generó el PDF"));
+        resolve();
+      }
+    );
+  });
+}
+
+// Serializa las conversiones (una a la vez). Intenta el convertidor persistente
+// y, si falla, reintenta con el modo simple.
 function convertir(xlsxPath, pdfPath) {
-  const tarea = convCola.then(() => convertirUna(xlsxPath, pdfPath));
+  const tarea = convCola.then(() =>
+    convertirUna(xlsxPath, pdfPath).catch((e) => {
+      console.log("  [PDF] el convertidor persistente falló (" + e.message + "). Reintentando en modo simple…");
+      return convertirSimple(xlsxPath, pdfPath);
+    })
+  );
   convCola = tarea.catch(() => {});
   return tarea;
 }
