@@ -907,14 +907,17 @@
   function mostrarEstadoPdf() {
     var el = $("pdfEstado");
     if (!el) return;
+    var donde = location.host || location.pathname;
     el.hidden = false;
     if (servidorPdf === true) {
       el.className = "pdf-estado ok";
-      el.textContent = "✅ PDF EXACTO ACTIVO — la descarga en PDF será el Excel convertido: idéntico al Excel.";
+      el.textContent = "✅ PDF EXACTO ACTIVO · abierto desde " + donde +
+                       " · la descarga en PDF será el Excel convertido (idéntico al Excel).";
     } else {
       el.className = "pdf-estado no";
-      el.textContent = "⚠️ PDF APROXIMADO — no se detectó el conversor de Excel. Abre la app con 'node server.js' " +
-                       "en un PC con Excel y reinícialo; así el PDF será idéntico al Excel.";
+      el.textContent = "⚠️ PDF APROXIMADO · esta página se abrió desde " + donde +
+                       " y ahí NO hay conversor de Excel. Para el PDF idéntico: ejecuta 'node server.js' " +
+                       "y entra a http://localhost:8080 (no al enlace de GitHub).";
     }
   }
 
