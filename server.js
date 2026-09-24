@@ -189,6 +189,15 @@ const server = http.createServer((req, res) => {
       return handlePdfConversion(req, res);
     }
 
+    // Sonda: indica si el conversor (Excel) esta disponible
+    if (req.method === "GET" && urlPath === "/api/pdf") {
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*"
+      });
+      return res.end(JSON.stringify({ ok: true, conversor: "excel" }));
+    }
+
     let filePath = urlPath;
     if (filePath === "/") filePath = "/index.html";
 

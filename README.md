@@ -68,6 +68,12 @@ _Instructor del SENA · Politólogo · Analista de Datos_
 > El archivo `Siga.xlsx` debe quedar en la **raíz** del repositorio (junto a
 > `index.html`), porque la app lo lee desde esa ruta.
 
+> ⚠️ **PDF en GitHub Pages:** GitHub solo sirve páginas web, no ejecuta programas.
+> Para que el PDF sea **idéntico al Excel** hace falta un conversor (Excel o
+> LibreOffice). Por eso en GitHub el PDF se dibuja con una librería del navegador
+> y queda *parecido*, pero no idéntico. Para el PDF idéntico usa la app local
+> (`node server.js`) o comparte la app con **`COMPARTIR.bat`** (abajo).
+
 ## Cómo probarla en tu computadora (sin Python)
 
 Al ser estática, no funciona con doble clic (`file://`) porque el navegador no
@@ -82,6 +88,21 @@ node server.js
 Luego abre **http://localhost:8080** (o la dirección que muestra la consola).
 Para usarla desde el celular en la misma red WiFi, abre la URL de red que imprime
 la consola (por ejemplo `http://192.168.x.x:8080`).
+
+Al iniciar verás `[Excel] listo para convertir a PDF`: desde ese momento el botón
+**PDF** entrega el Excel convertido (idéntico). En cada conversión la consola
+muestra cuánto tardó (`[PDF] convertido en X.X s`).
+
+## Compartirla con otras personas (con PDF idéntico)
+
+Ejecuta **`COMPARTIR.bat`**. Ese archivo:
+
+1. Enciende el servidor local (que sí convierte con Excel).
+2. Abre un túnel público temporal (Cloudflare Tunnel, gratis).
+3. Te muestra un enlace tipo `https://algo-random.trycloudflare.com`.
+
+Comparte ese enlace: quien lo abra usará exactamente la misma app, **con el PDF
+idéntico al Excel**. Debes dejar la ventana abierta mientras la usan.
 
 Opciones alternativas:
 

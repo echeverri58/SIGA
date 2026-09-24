@@ -782,8 +782,10 @@
     promesa
       .then(function (blob) {
         descargarBlob(blob, nombreArchivo(esPdf ? "pdf" : "xlsx"));
-        toast("Descarga lista: " + participantes.length + " participante(s) en " +
-              (esPdf ? "PDF" : "Excel") + ".", "success");
+        var detalle = esPdf
+          ? (servidorPdf ? "PDF idéntico al Excel" : "PDF generado en el navegador")
+          : "Excel";
+        toast("Descarga lista: " + participantes.length + " participante(s) — " + detalle, "success");
       })
       .catch(function (err) {
         toast("Error al generar el archivo: " + err.message, "error");
@@ -798,4 +800,10 @@
   /* ---------- Inicialización ---------- */
   actualizarPreviewFirma();
   actualizarContadores();
+
+  // Detecta si hay un conversor (Excel) disponible: solo entonces el PDF es idéntico al Excel
+  fetch("/api/pdf", { method: "GET", cache: "no-store" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { servidorPdf = !!(d && d.ok); })
+    .catch(function () { servidorPdf = false; });
 })();
