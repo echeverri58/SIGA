@@ -805,24 +805,37 @@
   var servidorPdf = null;      // null = sin probar
   var motivoFalloPdf = "";     // por qué no se pudo usar la conversión
 
+  // Intenta convertir usando una plantilla concreta y devuelve el PDF.
+  async function intentarConversion(plantilla) {
+    var xlsxBlob = await generarExcel(true, plantilla);
+    var resp = await fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "POST", body: xlsxBlob });
+    if (resp.ok) return await resp.blob();
+    var detalle = "";
+    try { var j = await resp.json(); detalle = j && j.error ? j.error : ""; } catch (e) {}
+    throw new Error(detalle || ("el conversor respondió HTTP " + resp.status));
+  }
+
   async function generarPDF() {
     if (servidorPdf !== false) {
+      var fallo1 = "";
+      // 1) Plantilla de UNA hoja (el PDF trae solo la planilla)
       try {
-        // Se usa la plantilla de UNA sola hoja para que el PDF salga solo con la planilla
-        var xlsxBlob = await generarExcel(true, TEMPLATE_PDF);
-        var resp = await fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "POST", body: xlsxBlob });
-        if (resp.ok) {
-          servidorPdf = true;
-          motivoFalloPdf = "";
-          return await resp.blob();
-        }
-        var detalle = "";
-        try { var j = await resp.json(); detalle = j && j.error ? j.error : ""; } catch (e2) {}
+        var pdf = await intentarConversion(TEMPLATE_PDF);
+        servidorPdf = true;
+        motivoFalloPdf = "";
+        return pdf;
+      } catch (e1) {
+        fallo1 = e1 && e1.message ? e1.message : "error con la plantilla de una hoja";
+      }
+      // 2) Respaldo: plantilla completa (con el conversor de Excel funciona igual)
+      try {
+        var pdf2 = await intentarConversion(TEMPLATE_URL);
+        servidorPdf = true;
+        motivoFalloPdf = "";
+        return pdf2;
+      } catch (e2) {
         servidorPdf = false;
-        motivoFalloPdf = detalle || ("el servidor respondió HTTP " + resp.status);
-      } catch (e) {
-        servidorPdf = false;
-        motivoFalloPdf = e && e.message ? e.message : "no se pudo contactar el conversor";
+        motivoFalloPdf = (e2 && e2.message ? e2.message : "") || fallo1;
       }
     }
     return generarPDFNavegador();
