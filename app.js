@@ -631,101 +631,170 @@
       .catch(function () { logoCache = ""; return ""; });
   }
 
+  /* ---------- Réplica fiel del formato (PDF generado en el navegador) ----------
+     Geometría tomada de la plantilla oficial: área de impresión A1:M33,
+     anchos de columna y altos de fila reales. */
+
+  // Anchos de columna A..M (px a 96 dpi, de la plantilla)
+  var GEO_COLS = [55, 157, 155, 141, 64, 140, 109, 302, 116, 64, 203, 83, 161];
+
+  // Alto de cada fila (px). Las filas 11-30 se calculan según la firma.
+  var GEO_ALTO = { 1: 110, 2: 39, 3: 59, 4: 37, 5: 48, 6: 72, 7: 37, 8: 37, 9: 37, 10: 55, 31: 20, 32: 24, 33: 24 };
+
+  // Bloques fijos del formato: [columnaInicial, cuantasColumnas, texto, estilo]
+  var GEO_BLOQUES = {
+    2: [[0, 12, "PROCESO DE DIRECCIÓN DE FORMACIÓN PROFESIONAL INTEGRAL", { b: 1, c: 1 }],
+        [12, 1, "VERSIÓN: 3", { b: 1, c: 1, s: 7 }]],
+    3: [[0, 12, "FORMATO PLANILLA  DE ASISTENCIA", { b: 1, c: 1, s: 12 }],
+        [12, 1, "CÓDIGO: GFPI-PL-001", { b: 1, c: 1, s: 7 }]],
+    4: [[0, 13, "FECHA DE DILIGENCIAMIENTO:", { b: 1 }]],
+    5: [[0, 2, "REGIONAL:", { b: 1 }], [2, 3, "5 Antioquia", {}],
+        [5, 2, "CENTRO DE FORMACIÓN:", { b: 1, s: 8 }], [7, 3, "9401 Centro de Servicios de Salud", {}],
+        [10, 1, "CIUDAD/MUNICIPIO:", { b: 1, s: 6 }], [11, 2, "Medellin", {}]],
+    6: [[0, 9, "NOMBRE DEL PROGRAMA DE FORMACIÓN:", { b: 1 }],
+        [9, 2, "NÚMERO DE FICHA DE CARACTERIZACIÓN", { b: 1, s: 6 }],
+        [11, 2, "", {}]],
+    7: [[0, 13, "A CONTINUACIÓN SELECCIONE EL PROCESO QUE SE VA A REALIZAR", { b: 1, s: 8, c: 1 }]],
+    8: [[0, 3, "CHARLAS INFORMATIVAS", { s: 8 }], [3, 1, "", { chk: 1 }],
+        [4, 4, "PRESENTACIÓN PRUEBAS PRESENCIALES", { s: 8 }], [8, 1, "", { chk: 1 }],
+        [9, 2, "MATRICULA", { s: 8 }], [11, 2, "", { chk: 1 }]],
+    9: [[0, 13, "DATOS DE LOS  PARTICIPANTES", { b: 1, c: 1 }]],
+    10: [[0, 1, "No:", { b: 1, s: 8, c: 1 }],
+         [1, 1, "TIPO DE DOCUMENTO DE IDENTIDAD ASPIRANTE", { b: 1, s: 8, c: 1 }],
+         [2, 1, "NÚMERO DOCUMENTO IDENTIDAD ASPIRANTE", { b: 1, s: 8, c: 1 }],
+         [3, 2, "NOMBRES DEL PARTICIPANTE", { b: 1, s: 8, c: 1 }],
+         [5, 2, "APELLIDOS DEL PARTICIPANTE", { b: 1, s: 8, c: 1 }],
+         [7, 1, "DIRECCIÓN / DEPENDENCIA / CARGO", { b: 1, s: 7, c: 1 }],
+         [8, 2, "CORREO ELECTRONICO", { b: 1, s: 8, c: 1 }],
+         [10, 1, "TELÉFONO", { b: 1, s: 8, c: 1 }],
+         [11, 2, "FIRMA", { b: 1, s: 8, c: 1 }]]
+  };
+
   async function generarPDFNavegador() {
     var doc = new jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     var pageW = doc.internal.pageSize.getWidth();
     var pageH = doc.internal.pageSize.getHeight();
-    var M = 10;
-    var util = pageW - M * 2;
-
     var logo = await logoDataURL();
-    var y = 9;
 
-    // ---- Encabezado del formato ----
-    if (logo) {
-      try { doc.addImage(logo, "PNG", M, y, 16, 16); } catch (e) {}
-    }
-    doc.setTextColor(20, 38, 28);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text("SERVICIO NACIONAL DE APRENDIZAJE", pageW / 2, y + 4, { align: "center" });
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
-    doc.text("SISTEMA INTEGRADO DE GESTIÓN", pageW / 2, y + 8, { align: "center" });
-    doc.setFontSize(6.8);
-    doc.text("PROCEDIMIENTO PLANEACIÓN Y PUBLICACIÓN DE LA OFERTA EDUCATIVA", pageW / 2, y + 11.5, { align: "center" });
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text("FORMATO PLANILLA DE ASISTENCIA", pageW / 2, y + 18, { align: "center" });
-
-    doc.setFont("helvetica", "normal"); doc.setFontSize(6.8);
-    doc.text("VERSIÓN: 3", pageW - M, y + 3, { align: "right" });
-    doc.text("CÓDIGO: GFPI-PL-001", pageW - M, y + 6.5, { align: "right" });
-    doc.text("Fecha: " + fechaHoy(), pageW - M, y + 10, { align: "right" });
-
-    // ---- Tabla con las 20 filas de la planilla ----
-    var TOTAL_FILAS = 20;
-    var body = [];
-    for (var i = 0; i < TOTAL_FILAS; i++) {
-      var p = participantes[i];
-      body.push([
-        String(i + 1),
-        p ? p.tipo_doc : "", p ? p.num_doc : "", p ? p.nombres : "",
-        p ? p.apellidos : "", p ? p.direccion : "", p ? p.correo : "",
-        p ? p.telefono : "", ""
-      ]);
-    }
-
-    doc.autoTable({
-      startY: y + 21,
-      margin: { left: M, right: M },
-      head: [["No", "Tipo de documento", "Número de documento", "Nombres", "Apellidos",
-              "Dirección / Dependencia / Cargo", "Correo electrónico", "Teléfono", "FIRMA"]],
-      body: body,
-      theme: "grid",
-      styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.6, valign: "middle",
-                halign: "center", textColor: [20, 38, 28],
-                lineColor: [120, 135, 128], lineWidth: 0.2, overflow: "linebreak" },
-      headStyles: { fillColor: [15, 122, 61], textColor: [255, 255, 255],
-                    fontStyle: "bold", halign: "center", valign: "middle", fontSize: 7 },
-      columnStyles: {
-        0: { cellWidth: 9 },
-        1: { cellWidth: 21 },
-        2: { cellWidth: 24, halign: "left" },
-        3: { cellWidth: 31, halign: "left" },
-        4: { cellWidth: 31, halign: "left" },
-        5: { cellWidth: 37, halign: "left" },
-        6: { cellWidth: 40, halign: "left" },
-        7: { cellWidth: 24, halign: "left" },
-        8: { cellWidth: 60 }
-      },
-      didParseCell: function (data) {
-        if (data.section === "body") {
-          var pp = participantes[data.row.index];
-          // Filas con firma más altas; las vacías compactas (para que quepa en menos hojas)
-          data.cell.styles.minCellHeight = (pp && pp.firma) ? 15 : 6.5;
-        }
-      },
-      didDrawCell: function (data) {
-        if (data.section === "body" && data.column.index === 8) {
-          var pp = participantes[data.row.index];
-          if (pp && pp.firma) {
-            try {
-              doc.addImage(pp.firma, "PNG", data.cell.x + 1.5, data.cell.y + 1.5,
-                           data.cell.width - 3, data.cell.height - 3, undefined, "FAST");
-            } catch (e) { /* firma no válida */ }
-          }
-        }
+    // --- alturas de fila (px) ---
+    var alto = [];
+    var r;
+    for (r = 1; r <= 33; r++) {
+      if (r >= 11 && r <= 30) {
+        var pp = participantes[r - 11];
+        alto[r] = (pp && pp.firma) ? 80 : 47;
+      } else {
+        alto[r] = GEO_ALTO[r] || 20;
       }
-    });
-
-    // ---- Pie: texto de consentimiento ----
-    var finY = ((doc.lastAutoTable && doc.lastAutoTable.finalY) || 190) + 4;
-    if (finY < pageH - 14) {
-      doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
-      doc.setTextColor(90, 100, 95);
-      var nota = "Consentimiento de prueba: es la manifestación libre, voluntaria y expresa, que da por escrito o vía web, " +
-                 "un aspirante a la formación en el SENA, autorizando que se le realice una prueba de selección, " +
-                 "cuyo resultado deberá consignarse en su registro.";
-      doc.text(doc.splitTextToSize(nota, util), M, finY);
     }
+
+    var totalW = 0, totalH = 0, i;
+    for (i = 0; i < GEO_COLS.length; i++) totalW += GEO_COLS[i];
+    for (r = 1; r <= 33; r++) totalH += alto[r];
+
+    // --- escala para que quepa en la hoja, centrado ---
+    var MG = 8;
+    var esc = Math.min((pageW - MG * 2) / totalW, (pageH - MG * 2) / totalH);
+    var ox = (pageW - totalW * esc) / 2;
+    var oy = (pageH - totalH * esc) / 2;
+
+    var xs = [0];
+    for (i = 0; i < GEO_COLS.length; i++) xs.push(xs[i] + GEO_COLS[i]);
+    var ys = [0, 0];
+    for (r = 1; r <= 33; r++) ys[r + 1] = ys[r] + alto[r];
+
+    function X(col) { return ox + xs[col] * esc; }
+    function Y(fila) { return oy + ys[fila] * esc; }
+    function ANCHO(span, col) { return (xs[col + span] - xs[col]) * esc; }
+    function ALTO(fila, span) { return (ys[fila + span] - ys[fila]) * esc; }
+    function PT(puntos) { return Math.max(3.2, puntos * esc * 3.7795); }  // tamaño de fuente escalado
+
+    doc.setTextColor(20, 38, 28);
+
+    function celda(fila, col, span, texto, est) {
+      est = est || {};
+      var x = X(col), y = Y(fila), w = ANCHO(span, col), h = ALTO(fila, 1);
+      doc.setDrawColor(95, 110, 102);
+      doc.setLineWidth(0.15);
+      doc.rect(x, y, w, h);
+      if (est.chk) {
+        var lado = Math.min(w, h) * 0.55;
+        doc.setLineWidth(0.3);
+        doc.rect(x + (w - lado) / 2, y + (h - lado) / 2, lado, lado);
+      }
+      if (texto) {
+        var fs = PT(est.s || 9);
+        doc.setFont("helvetica", est.b ? "bold" : "normal");
+        doc.setFontSize(fs);
+        var pad = Math.max(0.25, 1.2 * esc * 3.7795);
+        var lineas = doc.splitTextToSize(String(texto), Math.max(0.6, w - pad * 2));
+        var lh = fs * 0.3528 * 1.15;
+        var ty = y + (h - lineas.length * lh) / 2 + fs * 0.3528 * 0.85;
+        if (est.c) doc.text(lineas, x + w / 2, ty, { align: "center" });
+        else doc.text(lineas, x + pad, ty);
+      }
+    }
+
+    // --- fila 1: logo ---
+    doc.setDrawColor(95, 110, 102);
+    doc.setLineWidth(0.15);
+    doc.rect(X(0), Y(1), ANCHO(13, 0), ALTO(1, 1));
+    if (logo) {
+      var lh = ALTO(1, 1) * 0.75;
+      try {
+        doc.addImage(logo, "PNG", X(5) + (ANCHO(3, 5) - lh) / 2, Y(1) + (ALTO(1, 1) - lh) / 2, lh, lh);
+      } catch (e) { /* logo no válido */ }
+    }
+
+    // --- bloques fijos (filas 2 a 10) ---
+    for (r = 2; r <= 10; r++) {
+      var celdas = GEO_BLOQUES[r] || [];
+      for (i = 0; i < celdas.length; i++) {
+        celda(r, celdas[i][0], celdas[i][1], celdas[i][2], celdas[i][3]);
+      }
+    }
+
+    // --- filas de datos (11 a 30) ---
+    for (r = 11; r <= 30; r++) {
+      var p = participantes[r - 11];
+      celda(r, 0, 1, String(r - 10), { s: 11, c: 1 });
+      celda(r, 1, 1, p ? p.tipo_doc : "", { s: 11, c: 1 });
+      celda(r, 2, 1, p ? p.num_doc : "", { s: 11, c: 1 });
+      celda(r, 3, 2, p ? p.nombres : "", { s: 11, c: 1 });
+      celda(r, 5, 2, p ? p.apellidos : "", { s: 11, c: 1 });
+      celda(r, 7, 1, p ? p.direccion : "", { s: 11, c: 1 });
+      celda(r, 8, 2, p ? p.correo : "", { s: 11, c: 1 });
+      celda(r, 10, 1, p ? p.telefono : "", { s: 11, c: 1 });
+      celda(r, 11, 2, "", { s: 11 });
+      if (p && p.firma) {
+        try {
+          doc.addImage(p.firma, "PNG", X(11) + 0.7, Y(r) + 0.7,
+                       ANCHO(2, 11) - 1.4, ALTO(r, 1) - 1.4, undefined, "FAST");
+        } catch (e) { /* firma no válida */ }
+      }
+    }
+
+    // --- fila 31 (separación) ---
+    celda(31, 0, 13, "", {});
+
+    // --- consentimiento (filas 32-33, combinadas) ---
+    var xc = X(0), yc = Y(32), wc = ANCHO(13, 0), hc = ALTO(32, 2);
+    doc.setDrawColor(95, 110, 102);
+    doc.setLineWidth(0.15);
+    doc.rect(xc, yc, wc, hc);
+    doc.setFont("helvetica", "normal");
+    var fsc = PT(7);
+    doc.setFontSize(fsc);
+    var nota = "Consentimiento de prueba: es la manifestación libre, voluntaria y expresa, que da por escrito o vía web, " +
+               "un aspirante a la formación en el SENA, autorizando que se le realice una prueba de selección, " +
+               "cuyo resultado deberá consignarse en su registro.";
+    doc.text(doc.splitTextToSize(nota, wc - 2), xc + 1, yc + 1.5 + fsc * 0.3528 * 0.85);
+
+    // --- pie con la fecha ---
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(5);
+    doc.setTextColor(130, 140, 134);
+    doc.text("Generado con SIGA · " + fechaHoy(), pageW / 2, pageH - 1.5, { align: "center" });
 
     return doc.output("blob");
   }
