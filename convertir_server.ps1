@@ -35,7 +35,9 @@ while ($true) {
   $pdf  = $parts[1]
   $wb = $null
   try {
-    $wb = $excel.Workbooks.Open($xlsx, 0)  # 0 = no actualizar vinculos
+    # OJO: Workbooks.Open debe llamarse con UN solo argumento.
+    # Con dos o mas argumentos la llamada COM falla en algunas versiones de Excel.
+    $wb = $excel.Workbooks.Open($xlsx)
     $ws = $wb.Worksheets.Item("asistencia_mod")
 
     # --- Ajuste de impresion: la planilla completa en una hoja horizontal ---

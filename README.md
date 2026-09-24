@@ -44,7 +44,7 @@ internet**. La planilla se genera en el dispositivo y se descarga directamente.
 | `COMPARTIR.bat` | Comparte la app por internet con PDF idéntico.       |
 | `Siga.xlsx`    | Plantilla oficial completa (solo lectura).             |
 | `Siga_planilla.xlsx` | Plantilla con solo la hoja de la planilla (para el PDF). |
-| `crear_plantilla_pdf.py` | Genera `Siga_planilla.xlsx` desde `Siga.xlsx`. |
+| `crear_plantilla_pdf.ps1` | Genera `Siga_planilla.xlsx` desde `Siga.xlsx`. |
 
 > **PDF idéntico al Excel**: requiere ejecutar `node server.js` en una máquina
 > con **Microsoft Excel instalado**. Al iniciar, el servidor abre Excel en segundo

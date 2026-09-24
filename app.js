@@ -802,7 +802,8 @@
   /* ---------- Generar PDF ----------
      Si está el servidor local con Excel, convierte el Excel real (idéntico).
      Si no (por ejemplo GitHub Pages), usa el PDF del navegador. */
-  var servidorPdf = null;   // null = sin probar
+  var servidorPdf = null;      // null = sin probar
+  var motivoFalloPdf = "";     // por qué no se pudo usar la conversión
 
   async function generarPDF() {
     if (servidorPdf !== false) {
@@ -812,11 +813,16 @@
         var resp = await fetch((CONVERSOR_URL || "") + "/api/pdf", { method: "POST", body: xlsxBlob });
         if (resp.ok) {
           servidorPdf = true;
+          motivoFalloPdf = "";
           return await resp.blob();
         }
+        var detalle = "";
+        try { var j = await resp.json(); detalle = j && j.error ? j.error : ""; } catch (e2) {}
         servidorPdf = false;
+        motivoFalloPdf = detalle || ("el servidor respondió HTTP " + resp.status);
       } catch (e) {
         servidorPdf = false;
+        motivoFalloPdf = e && e.message ? e.message : "no se pudo contactar el conversor";
       }
     }
     return generarPDFNavegador();
@@ -861,10 +867,14 @@
     promesa
       .then(function (blob) {
         descargarBlob(blob, nombreArchivo(esPdf ? "pdf" : "xlsx"));
-        var detalle = esPdf
-          ? (servidorPdf ? "PDF idéntico al Excel" : "PDF generado en el navegador")
-          : "Excel";
-        toast("Descarga lista: " + participantes.length + " participante(s) — " + detalle, "success");
+        if (!esPdf) {
+          return toast("Descarga lista: " + participantes.length + " participante(s) — Excel.", "success");
+        }
+        if (servidorPdf) {
+          return toast("Descarga lista — PDF IDÉNTICO al Excel (convertido).", "success");
+        }
+        // Se usó la réplica: se muestra el motivo para poder corregirlo
+        toast("PDF aproximado (no se pudo convertir el Excel). Motivo: " + (motivoFalloPdf || "conversor no disponible"), "error");
       })
       .catch(function (err) {
         toast("Error al generar el archivo: " + err.message, "error");
