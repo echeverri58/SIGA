@@ -159,12 +159,17 @@
     minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
     maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
     var cw = maxX - minX + 1, ch = maxY - minY + 1;
+    // Limita el tamaño para que el Excel/PDF no pesen demasiado
+    var MAX_LADO = 520;
+    var esc = Math.min(1, MAX_LADO / Math.max(cw, ch));
+    var fw = Math.max(1, Math.round(cw * esc));
+    var fh = Math.max(1, Math.round(ch * esc));
     var tmp = document.createElement("canvas");
-    tmp.width = cw; tmp.height = ch;
+    tmp.width = fw; tmp.height = fh;
     var t = tmp.getContext("2d");
     t.fillStyle = "#fff";
-    t.fillRect(0, 0, cw, ch);
-    t.drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+    t.fillRect(0, 0, fw, fh);
+    t.drawImage(canvas, minX, minY, cw, ch, 0, 0, fw, fh);
     return tmp.toDataURL("image/png");
   }
 
@@ -574,7 +579,7 @@
     return blob;
   }
 
-  /* ---------- Generar PDF en el navegador (aproximado, respaldo) ---------- */
+  /* ---------- PDF generado en el navegador (respaldo sin servidor) ---------- */
   function fechaHoy() {
     var d = new Date();
     var meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
@@ -582,82 +587,159 @@
     return d.getDate() + " de " + meses[d.getMonth()] + " de " + d.getFullYear();
   }
 
-  function generarPDFNavegador() {
+  var logoCache = null;
+  function logoDataURL() {
+    if (logoCache !== null) return Promise.resolve(logoCache);
+    return fetch("sena_logo.png", { cache: "force-cache" })
+      .then(function (r) { return r.ok ? r.blob() : null; })
+      .then(function (b) {
+        if (!b) { logoCache = ""; return ""; }
+        return new Promise(function (res) {
+          var fr = new FileReader();
+          fr.onload = function () {
+            var img = new Image();
+            img.onload = function () {
+              // Se reduce el logo para que el PDF no pese demasiado
+              var MAX = 150;
+              var esc = Math.min(1, MAX / Math.max(img.width, img.height));
+              var cv = document.createElement("canvas");
+              cv.width = Math.max(1, Math.round(img.width * esc));
+              cv.height = Math.max(1, Math.round(img.height * esc));
+              var c = cv.getContext("2d");
+              c.fillStyle = "#fff";
+              c.fillRect(0, 0, cv.width, cv.height);
+              c.drawImage(img, 0, 0, cv.width, cv.height);
+              logoCache = cv.toDataURL("image/png");
+              res(logoCache);
+            };
+            img.onerror = function () { logoCache = ""; res(""); };
+            img.src = fr.result;
+          };
+          fr.onerror = function () { logoCache = ""; res(""); };
+          fr.readAsDataURL(b);
+        });
+      })
+      .catch(function () { logoCache = ""; return ""; });
+  }
+
+  async function generarPDFNavegador() {
     var doc = new jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var M = 10;
+    var util = pageW - M * 2;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("SERVICIO NACIONAL DE APRENDIZAJE SENA", pageW / 2, 12, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("SISTEMA INTEGRADO DE GESTIÓN · PROCEDIMIENTO PLANEACIÓN Y PUBLICACIÓN DE LA OFERTA EDUCATIVA", pageW / 2, 17, { align: "center" });
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("FORMATO PLANILLA DE ASISTENCIA", pageW / 2, 23, { align: "center" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("VERSIÓN: 3     CÓDIGO: GFPI-PL-001     Fecha de generación: " + fechaHoy(), pageW / 2, 28, { align: "center" });
+    var logo = await logoDataURL();
+    var y = 9;
 
-    var body = participantes.map(function (p, i) {
-      return [String(i + 1), p.tipo_doc, p.num_doc, p.nombres, p.apellidos,
-              p.direccion, p.correo, p.telefono, ""];
-    });
+    // ---- Encabezado del formato ----
+    if (logo) {
+      try { doc.addImage(logo, "PNG", M, y, 16, 16); } catch (e) {}
+    }
+    doc.setTextColor(20, 38, 28);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text("SERVICIO NACIONAL DE APRENDIZAJE", pageW / 2, y + 4, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+    doc.text("SISTEMA INTEGRADO DE GESTIÓN", pageW / 2, y + 8, { align: "center" });
+    doc.setFontSize(6.8);
+    doc.text("PROCEDIMIENTO PLANEACIÓN Y PUBLICACIÓN DE LA OFERTA EDUCATIVA", pageW / 2, y + 11.5, { align: "center" });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text("FORMATO PLANILLA DE ASISTENCIA", pageW / 2, y + 18, { align: "center" });
+
+    doc.setFont("helvetica", "normal"); doc.setFontSize(6.8);
+    doc.text("VERSIÓN: 3", pageW - M, y + 3, { align: "right" });
+    doc.text("CÓDIGO: GFPI-PL-001", pageW - M, y + 6.5, { align: "right" });
+    doc.text("Fecha: " + fechaHoy(), pageW - M, y + 10, { align: "right" });
+
+    // ---- Tabla con las 20 filas de la planilla ----
+    var TOTAL_FILAS = 20;
+    var body = [];
+    for (var i = 0; i < TOTAL_FILAS; i++) {
+      var p = participantes[i];
+      body.push([
+        String(i + 1),
+        p ? p.tipo_doc : "", p ? p.num_doc : "", p ? p.nombres : "",
+        p ? p.apellidos : "", p ? p.direccion : "", p ? p.correo : "",
+        p ? p.telefono : "", ""
+      ]);
+    }
 
     doc.autoTable({
-      startY: 32,
-      margin: { left: 10, right: 10 },
-      head: [["No", "Tipo doc.", "Número doc.", "Nombres", "Apellidos",
-              "Dirección / Dependencia / Cargo", "Correo electrónico", "Teléfono", "Firma"]],
+      startY: y + 21,
+      margin: { left: M, right: M },
+      head: [["No", "Tipo de documento", "Número de documento", "Nombres", "Apellidos",
+              "Dirección / Dependencia / Cargo", "Correo electrónico", "Teléfono", "FIRMA"]],
       body: body,
       theme: "grid",
-      styles: { font: "helvetica", fontSize: 8, cellPadding: 2, valign: "middle",
-                halign: "center", textColor: [20, 38, 28], lineColor: [150, 162, 156], lineWidth: 0.25 },
+      styles: { font: "helvetica", fontSize: 7.5, cellPadding: 1.6, valign: "middle",
+                halign: "center", textColor: [20, 38, 28],
+                lineColor: [120, 135, 128], lineWidth: 0.2, overflow: "linebreak" },
       headStyles: { fillColor: [15, 122, 61], textColor: [255, 255, 255],
-                    fontStyle: "bold", halign: "center", valign: "middle" },
-      alternateRowStyles: { fillColor: [240, 246, 242] },
+                    fontStyle: "bold", halign: "center", valign: "middle", fontSize: 7 },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 20 },
+        0: { cellWidth: 9 },
+        1: { cellWidth: 21 },
         2: { cellWidth: 24, halign: "left" },
-        3: { cellWidth: 32, halign: "left" },
-        4: { cellWidth: 32, halign: "left" },
+        3: { cellWidth: 31, halign: "left" },
+        4: { cellWidth: 31, halign: "left" },
         5: { cellWidth: 37, halign: "left" },
         6: { cellWidth: 40, halign: "left" },
         7: { cellWidth: 24, halign: "left" },
-        8: { cellWidth: 58 }
+        8: { cellWidth: 60 }
       },
-      bodyStyles: { minCellHeight: 18 },
+      didParseCell: function (data) {
+        if (data.section === "body") {
+          var pp = participantes[data.row.index];
+          // Filas con firma más altas; las vacías compactas (para que quepa en menos hojas)
+          data.cell.styles.minCellHeight = (pp && pp.firma) ? 15 : 6.5;
+        }
+      },
       didDrawCell: function (data) {
         if (data.section === "body" && data.column.index === 8) {
-          var p = participantes[data.row.index];
-          if (p && p.firma) {
+          var pp = participantes[data.row.index];
+          if (pp && pp.firma) {
             try {
-              var x = data.cell.x + 2;
-              var y = data.cell.y + 2;
-              var w = data.cell.width - 4;
-              var h = data.cell.height - 4;
-              doc.addImage(p.firma, "PNG", x, y, w, h, undefined, "FAST");
+              doc.addImage(pp.firma, "PNG", data.cell.x + 1.5, data.cell.y + 1.5,
+                           data.cell.width - 3, data.cell.height - 3, undefined, "FAST");
             } catch (e) { /* firma no válida */ }
           }
         }
       }
     });
 
+    // ---- Pie: texto de consentimiento ----
+    var finY = ((doc.lastAutoTable && doc.lastAutoTable.finalY) || 190) + 4;
+    if (finY < pageH - 14) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(6.5);
+      doc.setTextColor(90, 100, 95);
+      var nota = "Consentimiento de prueba: es la manifestación libre, voluntaria y expresa, que da por escrito o vía web, " +
+                 "un aspirante a la formación en el SENA, autorizando que se le realice una prueba de selección, " +
+                 "cuyo resultado deberá consignarse en su registro.";
+      doc.text(doc.splitTextToSize(nota, util), M, finY);
+    }
+
     return doc.output("blob");
   }
 
-  /* ---------- Generar PDF fiel: convierte el Excel real a PDF ----------
-     Requiere el servidor local (server.js) y Microsoft Excel instalado.
-     Si no está disponible, cae al PDF aproximado del navegador. */
+  /* ---------- Generar PDF ----------
+     Si está el servidor local con Excel, convierte el Excel real (idéntico).
+     Si no (por ejemplo GitHub Pages), usa el PDF del navegador. */
+  var servidorPdf = null;   // null = sin probar
+
   async function generarPDF() {
-    try {
-      var xlsxBlob = await generarExcel();
-      var resp = await fetch("/api/pdf", { method: "POST", body: xlsxBlob });
-      if (resp.ok) {
-        return await resp.blob();
+    if (servidorPdf !== false) {
+      try {
+        var xlsxBlob = await generarExcel();
+        var resp = await fetch("/api/pdf", { method: "POST", body: xlsxBlob });
+        if (resp.ok) {
+          servidorPdf = true;
+          return await resp.blob();
+        }
+        servidorPdf = false;
+      } catch (e) {
+        servidorPdf = false;
       }
-    } catch (e) { /* sin servidor: usa el respaldo */ }
+    }
     return generarPDFNavegador();
   }
 
