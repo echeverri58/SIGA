@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f7a3d">
+  <title>SIGA · Formato Planilla de Asistencia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f7a3d'/><text x='50' y='68' font-size='52' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>S</text></svg>">
+</head>
+<body>
+
+  <!-- ===================== ENCABEZADO ===================== -->
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge">SENA · Registro de asistencia</div>
+      <h1>Formato Planilla de Asistencia</h1>
+      <p class="hero-sub">Registra los participantes, captura su firma en pantalla y descarga el Excel listo, sin alterar el formato oficial.</p>
+      <div class="hero-steps">
+        <span class="step"><i>1</i> Llena los datos</span>
+        <span class="step"><i>2</i> Dibuja la firma</span>
+        <span class="step"><i>3</i> Descarga el Excel</span>
+      </div>
+    </div>
+    <div class="hero-wave"></div>
+  </header>
+
+  <main class="shell">
+
+    <!-- ===================== FORMULARIO ===================== -->
+    <section class="card" id="cardForm">
+      <div class="card-head">
+        <h2>Datos del participante</h2>
+        <span class="chip" id="chipContador">0 de 20</span>
+      </div>
+
+      <form id="formParticipante" autocomplete="off" novalidate>
+        <div class="grid">
+          <div class="field">
+            <label for="tipoDoc">Tipo de documento</label>
+            <div class="select-wrap">
+              <select id="tipoDoc">
+                <option value="CC">Cédula de Ciudadanía (CC)</option>
+                <option value="TI">Tarjeta de Identidad (TI)</option>
+                <option value="CE">Cédula de Extranjería (CE)</option>
+                <option value="DNI">Documento Nacional de Identificación (DNI)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="numDoc">Número de documento</label>
+            <input type="text" id="numDoc" inputmode="numeric" placeholder="Ej. 1023456789">
+          </div>
+
+          <div class="field">
+            <label for="nombres">Nombres</label>
+            <input type="text" id="nombres" placeholder="Nombres completos" autocomplete="given-name">
+          </div>
+
+          <div class="field">
+            <label for="apellidos">Apellidos</label>
+            <input type="text" id="apellidos" placeholder="Apellidos completos" autocomplete="family-name">
+          </div>
+
+          <div class="field span-2">
+            <label for="direccion">Dirección / Dependencia / Cargo</label>
+            <input type="text" id="direccion" placeholder="Ej. Calle 1 # 2-3 · Instructor">
+          </div>
+
+          <div class="field">
+            <label for="correo">Correo electrónico</label>
+            <input type="email" id="correo" inputmode="email" placeholder="correo@ejemplo.com" autocomplete="email">
+          </div>
+
+          <div class="field">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" id="telefono" inputmode="tel" placeholder="Ej. 3001234567" autocomplete="tel">
+          </div>
+        </div>
+
+        <!-- Firma -->
+        <div class="firma-block">
+          <div class="firma-head">
+            <label>Firma del participante</label>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnBorrarFirma" aria-label="Borrar firma">↺ Borrar</button>
+          </div>
+          <div class="pad-wrap">
+            <canvas id="canvasFirma"></canvas>
+            <span class="pad-hint" id="padHint">✍️ Dibuja aquí con el dedo</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-lg" id="btnAgregar">
+            <span class="btn-ico">＋</span> Agregar participante
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===================== LISTA ===================== -->
+    <section class="card" id="cardLista">
+      <div class="card-head">
+        <h2>Participantes registrados</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="btnVaciar" hidden>Vaciar lista</button>
+      </div>
+      <div class="list" id="lista">
+        <div class="empty" id="emptyState">
+          <div class="empty-ico">👥</div>
+          <p>Aún no hay participantes.</p>
+          <span>Agrega el primero para comenzar a construir la planilla.</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footnote">
+      Los datos se procesan únicamente en tu dispositivo y el archivo (Excel o PDF) se genera aquí mismo, sin subir nada a internet.
+    </footer>
+  </main>
+
+  <!-- ===================== BARRA INFERIOR ===================== -->
+  <div class="bottombar" id="bottombar">
+    <div class="bottombar-count">
+      <strong id="totalFinal">0</strong>
+      <span>participantes</span>
+    </div>
+    <div class="format-toggle" id="formatToggle" role="group" aria-label="Formato de descarga">
+      <button type="button" class="fmt active" data-format="excel">Excel</button>
+      <button type="button" class="fmt" data-format="pdf">PDF</button>
+    </div>
+    <button type="button" class="btn btn-accent btn-lg" id="btnGenerar" disabled>
+      <span id="btnGenerarTxt">Descargar</span>
+    </button>
+  </div>
+
+  <!-- ===================== TOAST ===================== -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="jszip.min.js"></script>
+  <script src="jspdf.umd.min.js"></script>
+  <script src="jspdf.plugin.autotable.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
