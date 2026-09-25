@@ -41,6 +41,38 @@
   var participantes = [];
   var formato = "excel";   // "excel" | "pdf"
 
+  /* ---------- Guardado en el navegador ----------
+     Los participantes (con sus firmas) se guardan en el propio navegador,
+     así NO se pierden si alguien recarga la página o cierra la pestaña. */
+  var CLAVE_GUARDADO = "siga_participantes_v1";
+
+  function guardarEnNavegador() {
+    try {
+      localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(participantes));
+      return true;
+    } catch (e) {
+      return false;   // sin espacio o navegación privada
+    }
+  }
+
+  function leerDelNavegador() {
+    try {
+      var texto = localStorage.getItem(CLAVE_GUARDADO);
+      if (!texto) return [];
+      var datos = JSON.parse(texto);
+      if (!Array.isArray(datos)) return [];
+      return datos.filter(function (p) {
+        return p && (p.nombres || p.apellidos || p.num_doc);
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function borrarGuardado() {
+    try { localStorage.removeItem(CLAVE_GUARDADO); } catch (e) {}
+  }
+
   /* ---------- Helpers DOM ---------- */
   function $(id) { return document.getElementById(id); }
   function escapeXml(s) {
@@ -388,6 +420,7 @@
       quitar.textContent = "✕";
       quitar.addEventListener("click", function () {
         participantes.splice(i, 1);
+        guardarEnNavegador();
         renderLista();
         actualizarContadores();
       });
@@ -445,14 +478,22 @@
       direccion: dir, correo: cor, telefono: tel, firma: firma
     });
 
+    var guardado = guardarEnNavegador();
     vaciarFormulario();
     renderLista();
     actualizarContadores();
-    toast("Participante agregado correctamente.", "success");
+    toast(guardado
+      ? "Participante agregado (guardado en este navegador)."
+      : "Participante agregado. Aviso: no se pudo guardar en el navegador.", guardado ? "success" : "error");
   });
 
   $("btnVaciar").addEventListener("click", function () {
+    if (participantes.length && !confirm("¿Seguro que quieres borrar los " + participantes.length +
+        " participantes de la lista? Esta acción no se puede deshacer.")) {
+      return;
+    }
     participantes = [];
+    borrarGuardado();
     renderLista();
     actualizarContadores();
     toast("Lista vaciada.", "success");
@@ -901,6 +942,17 @@
 
   /* ---------- Inicialización ---------- */
   actualizarPreviewFirma();
+
+  // Restaura los participantes guardados en este navegador (sobreviven a una recarga)
+  var recuperados = leerDelNavegador();
+  if (recuperados.length) {
+    participantes = recuperados;
+    renderLista();
+    setTimeout(function () {
+      toast("Se recuperaron " + participantes.length +
+            " participante(s) guardados: no se perdió nada al recargar.", "success");
+    }, 600);
+  }
   actualizarContadores();
 
   // Detecta si hay un conversor (Excel/LibreOffice) disponible: solo entonces el PDF es idéntico al Excel
